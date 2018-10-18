@@ -27,11 +27,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	/*
+			graph LR
+		   svc-service[svc-service] -- pega-http-8080 --> container-name
+		   subgraph pod
+		   container-name
+		   end
+	*/
+
+	fmt.Printf("graph LR\n")
 	svc, err := getServiceForDeployment("nginx", namespace, k8sClient)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
 	}
+
+	pods1, err := getPodsForSvc(svc, namespace, k8sClient)
+	_ = pods1
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(2)
+	}
+
+	fmt.Printf(" subgraph containers\n")
 
 	pods, err := getPodsForSvc(svc, namespace, k8sClient)
 	_ = pods
@@ -39,6 +57,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
 	}
+
+	fmt.Printf(" end\n")
 
 }
 
@@ -63,7 +83,8 @@ func getServiceForDeployment(deployment string, namespace string, k8sClient type
 	}
 	for _, svc := range svcs.Items {
 		if strings.Contains(svc.Name, deployment) {
-			fmt.Fprintf(os.Stdout, "service name: %v\n", svc.Name)
+			// svc-service[svc-service] -- pega-http-8080 --> container-name
+			fmt.Fprintf(os.Stdout, " service[%v] -- http-8080 --> ", svc.Name)
 			return &svc, nil
 		}
 	}
@@ -75,7 +96,7 @@ func getPodsForSvc(svc *corev1.Service, namespace string, k8sClient typev1.CoreV
 	listOptions := metav1.ListOptions{LabelSelector: set.AsSelector().String()}
 	pods, err := k8sClient.Pods(namespace).List(listOptions)
 	for _, pod := range pods.Items {
-		fmt.Fprintf(os.Stdout, "pod name: %v\n", pod.Name)
+		fmt.Fprintf(os.Stdout, " %v\n", pod.Name)
 	}
 	return pods, err
 }
